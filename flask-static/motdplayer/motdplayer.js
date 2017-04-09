@@ -123,6 +123,9 @@ var MOTDPlayerClass = function (b64InitString) {
                         nodeLoadingScreen.parentNode.removeChild(nodeLoadingScreen);
                         nodeLoadingScreen = null;
                     }
+
+                    if (successCallback)
+                        successCallback();
                 }
                 else
                     if (errorCallback)
