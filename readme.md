@@ -135,7 +135,7 @@ This should correspond to the class attributes on Page subclasses in your game s
 def register_regular_callback(self, callback):
 ```
 Intended to be used as a decorator. Registers a callback you want to handle data transmission that occurs when the MoTD page is being loaded.
-Your callback will receive only one argument - "data exchanging" function. You can call this function as many times as you want and pass a Python dictionary to it. Data exchanging function will every time return another Python dictionary - data sent back to you by the game server. Every time you can data exchanging function, the `on_data_received` callback is called on the Page instance in your plugin.
+Your callback will receive only one argument - "data exchanging" function. You can call this function as many times as you want and pass a Python dictionary to it. Data exchanging function will every time return another Python dictionary - data sent back to you by the game server. Every time you call data exchanging function, the `on_data_received` callback is called on the Page instance in your plugin.
 Your callback must return two values: the name of the template to render and a context (Python dictionary) to render that template with. Your context dictionary will be available in Jinja2 template as a `context` variable.
 E.g. to access the `key` from the context dictionary your callback returns, you write this piece of code in your template:
 ```html
