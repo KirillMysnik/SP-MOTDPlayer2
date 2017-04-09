@@ -1,0 +1,2 @@
+### server_salts directory
+For any SRCDS you run, copy `server_salt.dat` from `addons/source-python/data/custom/motdplayer` to this folder and rename it to look like `<server_id>.dat` (example: `my_server01.dat`)
