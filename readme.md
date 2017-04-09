@@ -140,7 +140,7 @@ Your callback must return two values: the name of the template to render and a c
 E.g. to access the `key` from the context dictionary your callback returns, you write this piece of code in your template:
 ```html
 <h1>Here's a key from the context my callback returned: {{ context.key }}</h1>
-``
+```
 Other words, your callback performs 2-way communication: it sends and receives the data to and from the game server.
 
 
