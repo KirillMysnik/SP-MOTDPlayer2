@@ -1,19 +1,33 @@
-import os
+from path import Path
 
 
 def parse_packages(dir_):
     packages = []
-    for name in os.listdir(dir_):
+    for path in Path(dir_).dirs():
+        name = path.name
         if name.startswith('__') and name.endswith('__'):
             continue
 
-        if os.path.isdir(os.path.join(dir_, name)):
-            packages.append(name)
+        packages.append(name)
 
     return packages
 
 
-current_dir = os.path.dirname(__file__)
-__all__ = parse_packages(current_dir)
+def parse_modules(dir_):
+    modules = []
+    for path in Path(dir_).files():
+        if path.ext != '.py':
+            continue
+
+        if path.name.startswith('__') and path.namebase.endswith('__'):
+            continue
+
+        modules.append(path.namebase)
+
+    return modules
+
+
+__all__ = (parse_modules(Path(__file__).parent) +
+           parse_packages(Path(__file__).parent))
 
 from . import *
