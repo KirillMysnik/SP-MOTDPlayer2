@@ -1,7 +1,7 @@
 var MOTDPlayerClass = function (b64InitString) {
     var MOTDPlayer = this;
 
-    var motdVar = JSON.parse(atob(b64InitString));
+    var authVar = JSON.parse(atob(b64InitString));
 
     var ajaxPostJson = function (url, data, successCallback, errorCallback) {
         var xhr = new XMLHttpRequest();
@@ -22,13 +22,13 @@ var MOTDPlayerClass = function (b64InitString) {
     var nodeLoadingScreen;
 
     this.post = function (data, successCallback, errorCallback) {
-        ajaxPostJson("/" + motdVar.serverId + "/" + motdVar.pluginId + "/" + motdVar.pageId + "/" + motdVar.steamid + "/" + motdVar.authMethod + "/" + motdVar.authToken + "/" + motdVar.sessionId + "/", {
+        ajaxPostJson("/" + authVar.serverId + "/" + authVar.pluginId + "/" + authVar.pageId + "/" + authVar.steamid + "/" + authVar.authMethod + "/" + authVar.authToken + "/" + authVar.sessionId + "/", {
                 action: "custom-data",
                 custom_data: data
             }, function (response) {
                 if (response['status'] == "OK") {
-                    motdVar.authMethod = 1;
-                    motdVar.authToken = response['web_auth_token'];
+                    authVar.authMethod = 1;
+                    authVar.authToken = response['web_auth_token'];
 
                     if (nodeLoadingScreen) {
                         nodeLoadingScreen.parentNode.removeChild(nodeLoadingScreen);
@@ -55,7 +55,7 @@ var MOTDPlayerClass = function (b64InitString) {
         if (ws)
             return;
 
-        ws = new WebSocket("ws://" + location.host + "/ws/" + motdVar.serverId + "/" + motdVar.pluginId + "/" + motdVar.pageId + "/" + motdVar.steamid + "/" + motdVar.authMethod + "/" + motdVar.authToken + "/" + motdVar.sessionId + "/");
+        ws = new WebSocket("ws://" + location.host + "/ws/" + authVar.serverId + "/" + authVar.pluginId + "/" + authVar.pageId + "/" + authVar.steamid + "/" + authVar.authMethod + "/" + authVar.authToken + "/" + authVar.sessionId + "/");
         ws.onopen = function(e) {
             if (openCallback)
                 openCallback();
@@ -72,8 +72,8 @@ var MOTDPlayerClass = function (b64InitString) {
         ws.onmessage = function(e) {
             var response = JSON.parse(e.data);
             if (response['status'] == "OK") {
-                motdVar.authMethod = 1;
-                motdVar.authToken = response['web_auth_token'];
+                authVar.authMethod = 1;
+                authVar.authToken = response['web_auth_token'];
             }
             else if (response['status'] = "CUSTOM_DATA")
                 messageCallback(response['custom_data']);
@@ -110,14 +110,14 @@ var MOTDPlayerClass = function (b64InitString) {
     };
 
     this.switchPage = function (newPageId, successCallback, errorCallback) {
-        ajaxPostJson("/switch/" + motdVar.serverId + "/" + motdVar.pluginId + "/" + newPageId + "/" + motdVar.pageId + "/" + motdVar.steamid + "/" + motdVar.authMethod + "/" + motdVar.authToken + "/" + motdVar.sessionId + "/",
+        ajaxPostJson("/switch/" + authVar.serverId + "/" + authVar.pluginId + "/" + newPageId + "/" + authVar.pageId + "/" + authVar.steamid + "/" + authVar.authMethod + "/" + authVar.authToken + "/" + authVar.sessionId + "/",
             {
                 action: "switch"
             }, function (response) {
                 if (response['status'] == "OK") {
-                    motdVar.authMethod = 1;
-                    motdVar.authToken = response['web_auth_token'];
-                    motdVar.pageId = newPageId;
+                    authVar.authMethod = 1;
+                    authVar.authToken = response['web_auth_token'];
+                    authVar.pageId = newPageId;
 
                     if (nodeLoadingScreen) {
                         nodeLoadingScreen.parentNode.removeChild(nodeLoadingScreen);
@@ -139,5 +139,9 @@ var MOTDPlayerClass = function (b64InitString) {
             nodeLoadingScreen = document.body.appendChild(document.createElement('div'));
             nodeLoadingScreen.classList.add('motdplayer-ajax-loading-screen');
         }
+    };
+
+    this.getPlayerSteamID64 = function () {
+        return authVar.steamid;
     };
 };

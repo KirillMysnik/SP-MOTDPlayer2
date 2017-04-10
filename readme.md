@@ -227,3 +227,8 @@ The `newPageId` argument is the ID of the page you want to switch to.
 The `successCallback` argument must be a function that will be called (without arguments) if the switch went successfully.
 The `errorCallback` argument must be a function that receives a string briefly describing an error (if any) - be it a network error or some MOTDPlayer-specific error (switch wasn't allowed, for example).
 
+
+```javascript
+getPlayerSteamID64 = function ()
+```
+Returns SteamID64 (as a string) of the player who's viewing current MoTD page.
