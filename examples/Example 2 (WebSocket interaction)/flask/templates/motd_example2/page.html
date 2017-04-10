@@ -1,10 +1,20 @@
 <!doctype html>
 <html>
 	<head>
-		<title>Test Application - Test WebSocket Page</title>
+		<title>Example 2 (WebSocket interaction)</title>
 		<style type="text/css">
 			html, body {
 				background-color: #fff;
+			}
+			table {
+			    font-family: monospace;
+			}
+			textarea {
+			    width: 600px;
+			    height: 400px;
+			}
+			input[type=text] {
+			    width: 300px;
 			}
 		</style>
         <link rel="stylesheet" type="text/css" href="/static/motdplayer/motdplayer.css" />
@@ -12,9 +22,18 @@
 		<script type="application/javascript">
 			var MOTDPlayer = new MOTDPlayerClass("{{ base64_init_string }}");
 		</script>
-        <script type="application/javascript" src="/static/test_application/test_ws_page.js"></script>
+        <script type="application/javascript" src="/static/motd_example2/script.js"></script>
 	</head>
 	<body>
+        <h1>Example 2 (WebSocket interaction)</h1>
+        <textarea id="events-log"></textarea><br/>
+		<input type="text" placeholder="Enter message to send to the server chat..." id="message-box" /><input type="button" disabled value="Send!" id="send-button" />
+
+        <!--
+			The following table utilizes two context variables that are
+			automatically inserted by the Flask application: auth_data and
+			next_auth_data. The table serves debug purposes only.
+		-->
 		<table>
 			<tr><th colspan="2">MOTDPlayer Debug Info</th></tr>
 			<tr><td>Server ID: </td><td>{{ auth_data.serverId }}</td></tr>
@@ -27,7 +46,5 @@
 			<tr><td>Session ID: </td><td>{{ auth_data.sessionId }}</td></tr>
 			<tr><td>Your SteamID (64-bit): </td><td>{{ auth_data.steamid }}</td></tr>
 		</table>
-        <textarea id="events-log" style="width: 600px; height: 400px;"></textarea><br/>
-		<input type="text" placeholder="Enter message to send to the server chat..." style="width: 300px;" id="message-box" /><input type="button" disabled value="Send!" id="send-button" />
 	</body>
 </html>

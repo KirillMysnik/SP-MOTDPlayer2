@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Example 1 (default interaction without WebSockets)</title>
+		<style type="text/css">
+			html, body {
+				background-color: #fff;
+			}
+			table {
+			    font-family: monospace;
+			}
+		</style>
+	</head>
+	<body>
+        <h1>Example 1 (default interaction without WebSockets)</h1>
+        <h2>Source.Python version: {{ context.sp_version }}</h2>
+
+		<!--
+			The following table utilizes two context variables that are
+			automatically inserted by the Flask application: auth_data and
+			next_auth_data. The table serves debug purposes only.
+		-->
+        <table>
+			<tr><th colspan="2">MOTDPlayer Debug Info</th></tr>
+			<tr><td>Server ID: </td><td>{{ auth_data.serverId }}</td></tr>
+			<tr><td>Plugin ID: </td><td>{{ auth_data.pluginId }}</td></tr>
+			<tr><td>Page ID: </td><td>{{ auth_data.pageId }}</td></tr>
+			<tr><td>Current Auth Method: </td><td>{{ auth_data.authMethod }}</td></tr>
+			<tr><td>Current Auth Token: </td><td>{{ auth_data.authToken }}</td></tr>
+			<tr><td>Next Auth Method: </td><td>{{ next_auth_data.authMethod }}</td></tr>
+			<tr><td>Next Auth Token: </td><td>{{ next_auth_data.authToken }}</td></tr>
+			<tr><td>Session ID: </td><td>{{ auth_data.sessionId }}</td></tr>
+			<tr><td>Your SteamID (64-bit): </td><td>{{ auth_data.steamid }}</td></tr>
+		</table>
+	</body>
+</html>
