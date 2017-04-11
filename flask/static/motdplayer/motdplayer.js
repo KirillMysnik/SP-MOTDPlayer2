@@ -78,7 +78,6 @@ var MOTDPlayerClass = function (b64InitString) {
             else if (response['status'] = "CUSTOM_DATA")
                 messageCallback(response['custom_data']);
             else {
-                alert("Error!");
                 if (errorCallback)
                     errorCallback(response['status'] + " " + response['error_id']);
             }
