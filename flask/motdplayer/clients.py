@@ -42,7 +42,7 @@ class MOTDClient(SRCDSClient):
         )
 
         if response['status'] == "OK":
-            return True
+            return None
 
         self.stop()
-        return False
+        return response['status']

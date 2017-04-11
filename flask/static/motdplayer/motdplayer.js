@@ -51,15 +51,20 @@ var MOTDPlayerClass = function (b64InitString) {
     };
 
     var ws;
-    this.openWSConnection = function (openCallback, messageCallback, closeCallback, errorCallback) {
-        if (ws)
+    this.openWSConnection = function (successCallback, messageCallback, closeCallback, errorCallback) {
+        if (ws) {
+            if (errorCallback)
+                errorCallback("WS_ALREADY_OPENED");
             return;
+        }
+
+        if (!MOTDPlayer.isWSSupported()) {
+            if (errorCallback)
+                errorCallback("WS_NO_BROWSER_SUPPORT");
+            return;
+        }
 
         ws = new WebSocket("ws://" + location.host + "/ws/" + authVar.serverId + "/" + authVar.pluginId + "/" + authVar.pageId + "/" + authVar.steamid + "/" + authVar.authMethod + "/" + authVar.authToken + "/" + authVar.sessionId + "/");
-        ws.onopen = function(e) {
-            if (openCallback)
-                openCallback();
-        };
         ws.onclose = function(e) {
             MOTDPlayer.closeWSConnection();
             if (closeCallback)
@@ -67,20 +72,23 @@ var MOTDPlayerClass = function (b64InitString) {
         };
         ws.onerror = function(err) {
             if (errorCallback)
-                errorCallback("JS_WS_FAILURE");
+                errorCallback("WS_ONERROR_EVENT");
         };
         ws.onmessage = function(e) {
             var response = JSON.parse(e.data);
             if (response['status'] == "OK") {
                 authVar.authMethod = 1;
                 authVar.authToken = response['web_auth_token'];
+
+                if (successCallback)
+                    successCallback();
             }
-            else if (response['status'] = "CUSTOM_DATA")
+            else if (response['status'] == "CUSTOM_DATA") {
+                console.log(response);
                 messageCallback(response['custom_data']);
-            else {
-                if (errorCallback)
-                    errorCallback(response['status'] + " " + response['error_id']);
             }
+            else if (errorCallback)
+                errorCallback(response['status'] + " " + response['error_id']);
         };
     };
 

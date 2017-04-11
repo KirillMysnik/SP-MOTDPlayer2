@@ -92,18 +92,18 @@ def create_client(client_class, db, server_id, plugin_id, page_id, steamid,
     if auth_method == AuthMethod.SRCDS:
         new_salt = user.get_new_salt()
 
-        if not client.set_identity(steamid, new_salt, session_id, ws):
-            return (
-                server, wrp, user, client, build_error(
-                    "Identity Rejected.", ws))
+        error = client.set_identity(steamid, new_salt, session_id, ws)
+        if error is not None:
+            return (server, wrp, user, client, build_error(
+                        "Identity Rejected ({}).".format(error), ws))
 
         user.salt = new_salt
 
     elif auth_method == AuthMethod.WEB:
-        if not client.set_identity(steamid, None, session_id, ws):
-            return (
-                server, wrp, user, client, build_error(
-                    "Identity Rejected.", ws))
+        error = client.set_identity(steamid, None, session_id, ws)
+        if error is not None:
+            return (server, wrp, user, client, build_error(
+                        "Identity Rejected ({}).".format(error), ws))
 
         web_salt = user.get_new_salt()
         user.web_salt = web_salt
