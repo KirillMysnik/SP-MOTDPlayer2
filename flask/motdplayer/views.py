@@ -182,7 +182,7 @@ def init(app, db):
             except KeyError:
                 return build_error("Bad Request.", ws=False)
 
-            if action != "custom_data":
+            if action != "custom-data":
                 return build_error("Invalid Action.", ws=False)
 
             try:
