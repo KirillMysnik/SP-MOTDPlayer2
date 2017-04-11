@@ -292,14 +292,19 @@ def init(app, db):
                     print_exc()
                     client.stop()
                     return
-                except OSError:
-                    print_exc()
-                    client.stop()
+
+                try:
+                    action = data['action']
+                    custom_data = data['custom_data']
+                except KeyError:
+                    return
+
+                if action != "custom-data":
                     return
 
                 # WebSocket -> SRCDS: data goes through wrp callback
                 try:
-                    filtered_data = wrp.ws_callback(data)
+                    filtered_data = wrp.ws_callback(custom_data)
                 except Exception:
                     print_exc()
                     client.stop()
@@ -308,8 +313,10 @@ def init(app, db):
                     return
 
                 try:
-                    data_encoded = json.dumps(
-                        filtered_data).encode('utf-8')
+                    data_encoded = json.dumps({
+                        'action': "custom-data",
+                        'custom_data': filtered_data,
+                    }).encode('utf-8')
                 except (TypeError, UnicodeEncodeError):
                     print_exc()
                     client.stop()
