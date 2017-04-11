@@ -18,9 +18,9 @@ class MOTDClient(SRCDSClient):
         self.send_data(json.dumps(kwargs).encode('utf-8'))
         return json.loads(self.receive_data().decode('utf-8'))
 
-    def exchange_custom_data(self, **kwargs):
+    def exchange_custom_data(self, data):
         response = self.exchange_json_data(
-            action="custom-data", custom_data=kwargs)
+            action="custom-data", custom_data=data)
 
         if response['status'] == "OK":
             return response['custom_data']
