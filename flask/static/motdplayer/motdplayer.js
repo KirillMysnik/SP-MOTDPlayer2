@@ -141,7 +141,15 @@ var MOTDPlayerClass = function (b64InitString) {
         }
     };
 
+    this.reloadPage = function () {
+        location.href = "/" + authVar.serverId + "/" + authVar.pluginId + "/" + authVar.pageId + "/" + authVar.steamid + "/" + authVar.authMethod + "/" + authVar.authToken + "/" + authVar.sessionId + "/";
+    };
+
     this.getPlayerSteamID64 = function () {
         return authVar.steamid;
+    };
+
+    this.getPageId = function () {
+        return authVar.pageId;
     };
 };

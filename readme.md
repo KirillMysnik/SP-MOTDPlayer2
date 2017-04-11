@@ -229,6 +229,18 @@ The `errorCallback` argument must be a function that receives a string briefly d
 
 
 ```javascript
+reloadPage = function ()
+```
+Reloads the page using valid auth details. Useful after page switching to load the page you have switched to.
+
+
+```javascript
 getPlayerSteamID64 = function ()
 ```
 Returns SteamID64 (as a string) of the player who's viewing current MoTD page.
+
+
+```javascript
+getPageID = function ()
+```
+Returns current Page Id.
