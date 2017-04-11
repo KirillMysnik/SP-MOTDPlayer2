@@ -197,11 +197,12 @@ This function just performs a regular browser check. It CANNOT, however, tell yo
 openWSConnection = function (openCallback, messageCallback, closeCallback, errorCallback)
 ```
 This function establishes a WebSocket connection with the current page.
-The `openCallback` argument must be a function that will be called (without arguments) when the connection successfully opens.
+The `successCallback` argument must be a function that will be called (without arguments) when the connection successfully opens and is accepted by the SRCDS plugin.
 The `messageCallback` argument must be a function receiving the data sent to you by the Flask application.
 The `closeCallback` argument must be a function that will be called (without arguments) when the connection closes.
 The `errorCallback` argument must be a function that receives a string briefly describing an error (if any) - be it a network error or some MOTDPlayer-specific error (page doesn't support WebSocket communication, for example).
-Makes no effect if there already exists an active WebSocket connection.
+If the browser or the web-server don't support WebSocket protocol, your `errorCallback` will also be called.
+Calls `errorCallback` if there already exists an active WebSocket connection.
 
 
 ```javascript
