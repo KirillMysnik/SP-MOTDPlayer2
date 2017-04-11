@@ -173,7 +173,10 @@ def init(app, db):
         if error is not None:
             return error
 
-        ex_data_func = client.exchange_custom_data
+        # We should probably change it in CCP so that exchange_custom_data
+        # accepts a dictionary, not **kwargs
+        def ex_data_func(data):
+            return client.exchange_custom_data(**data)
 
         if request.is_json:
             try:
