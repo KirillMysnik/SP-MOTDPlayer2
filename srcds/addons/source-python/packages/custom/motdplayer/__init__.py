@@ -631,8 +631,8 @@ class MOTDPlayerRawReceiver(RawReceiver):
 
 
 @OnPluginUnloaded
-def listener_on_plugin_unloaded(plugin_name):
-    _pages_mapping.pop(plugin_name, None)
+def listener_on_plugin_unloaded(plugin):
+    _pages_mapping.pop(plugin.name, None)
 
 
 @OnClientActive
