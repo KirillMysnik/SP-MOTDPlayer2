@@ -214,10 +214,10 @@ class MOTDSession:
 
         if self.page_ws is not None and error in (
                 SessionError.TAKEN_OVER,
-                SessionError.PLAYER_DROP,
-                SessionError.UNKNOWN_PLAYER):
+                SessionError.PLAYER_DROP):
 
             self._ws_stop_transmission("ERROR_SESSION_{}".format(error.name))
+            self.page_ws = None
 
         if ws_only:
             self.page_ws.on_error(error)
