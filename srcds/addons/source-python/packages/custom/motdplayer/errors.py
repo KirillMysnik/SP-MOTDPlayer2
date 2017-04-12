@@ -6,3 +6,4 @@ class SessionError(IntEnum):
     PLAYER_DROP = 1
     UNKNOWN_PLAYER = 2
     WS_TRANSMISSION_END = 3
+    WS_SWITCHED_FROM = 4

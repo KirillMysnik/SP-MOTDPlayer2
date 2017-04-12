@@ -176,6 +176,7 @@ class MOTDSession:
         self.page_ws = None
         self.ws_allowed = False
         self._answer = None
+        self._ws_stop_transmission = None
 
         self.init_page(page_class)
 
@@ -184,26 +185,46 @@ class MOTDSession:
         self._page_class = page_class
 
         self.page = page_class(self._motdplayer.index, ws_instance=False)
+
+        old_page_ws = self.page_ws
         self.page_ws = None
 
         if page_class.ws_support:
             self.ws_allowed = True
+
+        if old_page_ws is not None:
+            self._ws_stop_transmission("ERROR_WS_SWITCHED_FROM")
+            old_page_ws.on_error(SessionError.WS_SWITCHED_FROM)
 
     def set_ws_callbacks(self, send_data, stop_transmission):
         self.page_ws = self._page_class(
             self._motdplayer.index, ws_instance=True)
 
         self.page_ws.send_data = send_data
-        self.page_ws.stop_ws_transmission = stop_transmission
+
+        def plugin_stop_ws_transmission():
+            stop_transmission("ERROR_WS_TRANSMISSION_STOPPED_BY_PLUGIN")
+
+        self.page_ws.stop_ws_transmission = plugin_stop_ws_transmission
+        self._ws_stop_transmission = stop_transmission
 
     def error(self, error, ws_only=False):
         if self._closed:
             raise SessionClosedException("Please stop data transmission")
 
-        if not ws_only:
-            self.page.on_error(error)
-        if self.page_ws is not None:
+        if self.page_ws is not None and error in (
+                SessionError.TAKEN_OVER,
+                SessionError.PLAYER_DROP,
+                SessionError.UNKNOWN_PLAYER):
+
+            self._ws_stop_transmission("ERROR_SESSION_{}".format(error.name))
+
+        if ws_only:
             self.page_ws.on_error(error)
+        else:
+            self.page.on_error(error)
+            if self.page_ws is not None:
+                self.page_ws.on_error(error)
 
     def receive(self, data):
         if self._closed:
@@ -501,10 +522,8 @@ class MOTDPlayerRawReceiver(RawReceiver):
                     else:
                         self.send_data(data_encoded)
 
-                def stop_ws_transmission():
-                    self.send_message(
-                        status="ERROR_WS_TRANSMISSION_STOPPED_BY_PLUGIN")
-
+                def stop_ws_transmission(status):
+                    self.send_message(status=status)
                     self.stop()
 
                 self.session.set_ws_callbacks(

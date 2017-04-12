@@ -28,7 +28,7 @@ MOTDPlayer provides an interface that lets the MoTD page send data to the game s
 The page sends data to the server and gets data back only once, during loading process. Consequent AJAX requests can broaden the possibilities of this approach.
 
 #### WebSocket-powered (currently supported on [uWSGI](https://uwsgi-docs.readthedocs.io/en/latest/) only)
-This extends the previous approach: the page establishes a WebSocket-connection and is able to send the data to the game server without AJAX requests. What is more important is that the game server itself is now able to push data to such MoTD pages at any time.
+This extends the previous approach: the page establishes a WebSocket connection and is able to send the data to the game server without AJAX requests. What is more important is that the game server itself is now able to push data to such MoTD pages at any time.
 
 One important thing to keep in mind is that you don't directly expose your game server to the public - all data transmissions are proxied (and filtered, if needed) by the Flask application that runs on the web-server.
 
@@ -46,6 +46,7 @@ Enumeration of possible reasons of why the current page instance invalidates:
 * __PLAYER_DROP__ - Player to which this page instance was sent has disconnected.
 * __UNKNOWN_PLAYER__ - Page is sent to a non-existing player. This is going to be changed in the future version. Instead of initializing the page and immediately sending __UNKNOWN_PLAYER__ to it, MOTDPlayer will avoid initializing the page at all and will raise an exception.
 * __WS_TRANSMISSION_END__ - This can only be received by a WebSocket-instance of the Page and is sent by MOTDPlayer when a WebSocket communication ends.
+* __WS_SWITCHED_FROM__ - This can only be received by a WebSocket-instance of the Page and is sent when the WebSocket communication was aborted because MoTD switches to another page.
 ```python
 class SessionError(IntEnum):
     TAKEN_OVER = 0
@@ -105,7 +106,7 @@ For a regular instance of the Page you can call this method only inside of `on_d
 ```python
 def stop_ws_transmission(self):
 ```
-Call this to manually abort WebSocket-communication. You can only call this method for WebSocket-instances of the Page.
+Call this to manually abort WebSocket communication. You can only call this method for WebSocket-instances of the Page.
 
 
 ```python
