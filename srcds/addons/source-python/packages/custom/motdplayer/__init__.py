@@ -15,7 +15,6 @@ from cvars import ConVar
 from listeners import OnClientActive, OnLevelInit, OnPluginUnloaded
 from listeners.tick import GameThread
 from messages import HudDestination, TextMsg, VGUIMenu
-from paths import CUSTOM_DATA_PATH
 from players.dictionary import PlayerDictionary
 from players.helpers import playerinfo_from_index, uniqueid_from_playerinfo
 from steam import SteamID
@@ -23,6 +22,7 @@ from steam import SteamID
 from ccp.receive import RawReceiver
 
 from .errors import SessionError
+from .paths import get_server_file, MOTDPLAYER_CFG_PATH, MOTDPLAYER_DATA_PATH
 
 
 class AuthMethod(IntEnum):
@@ -31,10 +31,8 @@ class AuthMethod(IntEnum):
 
 
 MOTD_BROKEN_GAMES = ('csgo',)
-MOTDPLAYER_DATA_PATH = CUSTOM_DATA_PATH / "motdplayer"
-CONFIG_INI_PATH = MOTDPLAYER_DATA_PATH / "config.ini"
 SERVER_ADDR = ConVar('ip').get_string()
-SECRET_SALT_DAT_PATH = MOTDPLAYER_DATA_PATH / "secret_salt.dat"
+SECRET_SALT_DAT_PATH = MOTDPLAYER_CFG_PATH / "secret_salt.dat"
 SECRET_SALT_LENGTH = 32
 EXCEPTION_HEADER = ("{breaker}\nMOTDPlayer has caught "
                     "an exception!\n{breaker}".format(breaker="="*79))
@@ -48,7 +46,7 @@ else:
         f.write(SECRET_SALT)
 
 config = ConfigParser()
-config.read(CONFIG_INI_PATH)
+config.read(get_server_file(MOTDPLAYER_CFG_PATH / "config.ini"))
 
 if GAME_NAME in MOTD_BROKEN_GAMES:
     URL_BASE = config['motd']['url_csgo']
@@ -217,7 +215,6 @@ class MOTDSession:
                 SessionError.PLAYER_DROP):
 
             self._ws_stop_transmission("ERROR_SESSION_{}".format(error.name))
-            self.page_ws = None
 
         if ws_only:
             self.page_ws.on_error(error)
@@ -225,6 +222,8 @@ class MOTDSession:
             self.page.on_error(error)
             if self.page_ws is not None:
                 self.page_ws.on_error(error)
+
+        self.page_ws = None
 
     def receive(self, data):
         if self._closed:
