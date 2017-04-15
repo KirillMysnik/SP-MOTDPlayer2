@@ -312,6 +312,12 @@ def init(app, db):
                         "WRP WS Callback Raised.", ws=True))
                     return
 
+                if filtered_data is None:
+                    client.stop()
+                    ws_send(**build_error(
+                        "WRP WS Callback Refused Data.", ws=True))
+                    return
+
                 try:
                     data_encoded = json.dumps({
                         'action': "custom-data",
