@@ -655,7 +655,7 @@ class MOTDPlayerRawReceiver(RawReceiver):
 
     def on_connection_abort(self):
         if self.page_request_type == PageRequestType.WEBSOCKET:
-            self.session.error(SessionError.WS_TRANSMISSION_END, ws_only=True)
+            self.session.error(SessionError.WS_TRANSMISSION_END)
 
 
 @OnPluginUnloaded
