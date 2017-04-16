@@ -186,6 +186,14 @@ class MOTDSession:
 
         self.init_page(page_class)
 
+    @property
+    def plugin_id(self):
+        return self._page_class.plugin_id
+
+    @property
+    def page_id(self):
+        return self._page_class.page_id
+
     def init_page(self, page_class):
         self._page_class = page_class
         self.ws_allowed = page_class.ws_support
@@ -551,7 +559,7 @@ class MOTDPlayerRawReceiver(RawReceiver):
                 self.stop()
                 return
 
-            plugin_id = self.session.page.plugin_id
+            plugin_id = self.session.plugin_id
             try:
                 new_page_class = _pages_mapping[plugin_id][new_page_id]
             except KeyError:
