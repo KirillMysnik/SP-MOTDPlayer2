@@ -21,12 +21,12 @@ class Example2Page(Page):
     page_id = "example2_page"
     ws_support = True
 
-    def __init__(self, index, ws_instance):
-        super().__init__(index, ws_instance)
+    def __init__(self, index, page_request_type):
+        super().__init__(index, page_request_type)
 
         self.player_name = ""
 
-        if ws_instance:
+        if self.is_websocket:
             self.player_name = Player(index).name
             _ws_pages.append(self)
 
@@ -39,7 +39,7 @@ class Example2Page(Page):
             log_console("Error! Unexpected action: {}".format(data['action']))
 
     def on_error(self, error):
-        if self.ws_instance and self in _ws_pages:
+        if self.is_websocket and self in _ws_pages:
             _ws_pages.remove(self)
 
 

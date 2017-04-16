@@ -40,19 +40,30 @@ Examples of complete applications (Source.Python plugin + Flask MOTDPlayer appli
 
 Plugin API (Source.Python counterpart)
 --------------------------------------
-##### motdplayer.errors.SessionError
-Enumeration of possible reasons of why the current page instance invalidates:
-* __TAKEN_OVER__ - The page is shadowed by another page. In some games only one MoTD page can be shown at a time, and if you send multiple, you never know which one will make it to the player's screen. For this reason all pages are initialized, but when one actually displays, all others receive __TAKEN_OVER__ error.
-* __PLAYER_DROP__ - Player to which this page instance was sent has disconnected.
-* __UNKNOWN_PLAYER__ - Page is sent to a non-existing player. This is going to be changed in the future version. Instead of initializing the page and immediately sending __UNKNOWN_PLAYER__ to it, MOTDPlayer will avoid initializing the page at all and will raise an exception.
-* __WS_TRANSMISSION_END__ - This can only be received by a WebSocket-instance of the Page and is sent by MOTDPlayer when a WebSocket communication ends.
-* __WS_SWITCHED_FROM__ - This can only be received by a WebSocket-instance of the Page and is sent when the WebSocket communication was aborted because MoTD switches to another page.
+##### motdplayer.constants.SessionError
+Enumeration of possible reasons of why the current page WebSocket page instance invalidates:
+* __TAKEN_OVER__ - The page is shadowed by another page.
+* __PLAYER_DROP__ - Player which this page instance was sent to has disconnected.
+* __WS_TRANSMISSION_END__ - WebSocket communication ends.
+* __WS_SWITCHED_FROM__ - WebSocket communication was aborted because MoTD switches to another page.
 ```python
 class SessionError(IntEnum):
     TAKEN_OVER = 0
     PLAYER_DROP = 1
     UNKNOWN_PLAYER = 2
     WS_TRANSMISSION_END = 3
+```
+
+##### motdplayer.constants.PageRequestType
+Enumeration of possible Page instance types (defines what type of request was issued to instantiate the page):
+* __INIT__ - MoTD opens and Flask application requests data to render the page.
+* __AJAX__ - Script on the MoTD page issues an AJAX request and Flask application requests data to create a response.
+* __WEBSOCKET__ - Script on the MoTD page sends data through WebSocket protocol
+```python
+class PageRequestType(IntEnum):
+    INIT = 0
+    AJAX = 1
+    WEBSOCKET = 2
 ```
 
 ##### motdplayer.Page
@@ -63,35 +74,44 @@ _Class attributes (override them when subclassing):_
 * __plugin_id__ - Your plugin ID. Should be unique in Source.Python namespace. The best choice is your main module basename.
 * __ws_support__ - Whether or not this page should support WebSocket protocol.
 
+_Properties_:
+* is_init - Whether or not the page instance is of INIT request type.
+* is_ajax - Whether or not the page instance is of AJAX request type.
+* is_websocket - Whether or not the page instance is of WEBSOCKET request type.
+
 _Methods:_
 
 ```python
-def __init__(self, index, ws_instance):
+def __init__(self, index, page_request_type):
 ```
-Called when your page is instantiated. One instance of your page is created instantly when you send it, and `ws_instance` argument is `False`. Another one may be created if MoTD establishes WebSocket connection. In the latter case the instance will be initialized with `ws_instance` set to `True`.
-The `index` argument is player's index.
+Called when your page is instantiated. The `index` argument is player's index.
+For INIT request type the page is instantiated when the MoTD loads.
+For AJAX request type the page is instantiated when the AJAX request is made.
+For WEBSOCKET request type the page is instantiated when the WebSocket connection is established.
+See `motdplayer.constants.PageRequestType` for more details.
 
 
 ```python
 def on_error(self, error):
 ```
-Called when page instance invalidates for some reason. See `motdplayer.errors.SessionError` for more details.
+Called when page instance invalidates for some reason. See `motdplayer.constants.SessionError` for more details.
 
 
 ```python
-def on_switch_requested(self, new_page_id):
+@staticmethod
+def on_switch_requested(index, new_page_id):
 ```
 Called when scripts in MoTD screen request so-called "page switch".
 Due to how MOTDPlayer auth system works, one cannot simply replace Page ID in page url with another Page ID as it will break SHA-512 hash. To be able to perform AJAX-requests with another Page ID, scripts must first request a page switch.
-`on_switch_requested` is called in this case. Its only argument, `new_page_id`, is the requested new Page ID. If your implementation of this method returns False, the switch will not be allowed. Default implementation always returns True.
+`on_switch_requested` is called in this case. The `index` argument is player's index. Its second argument, `new_page_id`, is the requested new Page ID. If your implementation of this method returns False, the switch will not be allowed. Default implementation always returns True.
 
 
 ```python
 def on_data_received(self, data):
 ```
 Called when the data is being sent from MoTD page to your plugin.
-For a WebSocket-instance of the Page this can occur at any time.
-For a regular instance this only occurs when MoTD is being loaded into player's screen.
+For a WEBSOCKET instance of the Page this can occur at any time.
+For INIT or AJAX instances this only occurs when a MoTD is being loaded into player's screen or AJAX call is made.
 The `data` argument is a Python dictionary.
 
 
@@ -99,14 +119,14 @@ The `data` argument is a Python dictionary.
 def send_data(self, data):
 ```
 Call this to send data to the MoTD page. The `data` argument should be a Python dictionary you want to send to the MoTD page.
-For a WebSocket-instance of the Page you can call this method at any time.
-For a regular instance of the Page you can call this method only inside of `on_data_received` callback, and ONLY ONCE.
+For a WEBSOCKET instance of the Page you can call this method at any time.
+For INIT and AJAX instances of the Page you can call this method only inside of `on_data_received` callback, and ONLY ONCE.
 
 
 ```python
 def stop_ws_transmission(self):
 ```
-Call this to manually abort WebSocket communication. You can only call this method for WebSocket-instances of the Page.
+Call this to manually abort WebSocket communication. You can only call this method for WEBSOCKET instances of the Page.
 
 
 ```python

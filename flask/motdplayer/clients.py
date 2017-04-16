@@ -35,10 +35,10 @@ class MOTDClient(SRCDSClient):
 
         return response['status'] == "OK"
 
-    def set_identity(self, steamid, salt, session_id, ws):
+    def set_identity(self, steamid, salt, session_id, request_type):
         response = self.exchange_json_data(
             action="set-identity", new_salt=salt, steamid=steamid,
-            session_id=session_id, ws=ws
+            session_id=session_id, request_type=request_type
         )
 
         if response['status'] == "OK":

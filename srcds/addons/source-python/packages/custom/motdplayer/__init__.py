@@ -21,7 +21,7 @@ from steam import SteamID
 
 from ccp.receive import RawReceiver
 
-from .errors import SessionError
+from .constants import SessionError, PageRequestType
 from .paths import get_server_file, MOTDPLAYER_CFG_PATH, MOTDPLAYER_DATA_PATH
 
 
@@ -128,14 +128,27 @@ class Page(metaclass=PageMeta):
     plugin_id = None
     ws_support = False
 
-    def __init__(self, index, ws_instance):
+    def __init__(self, index, page_request_type):
         self.index = index
-        self.ws_instance = ws_instance
+        self._page_request_type = page_request_type
+
+    @property
+    def is_init(self):
+        return self._page_request_type == PageRequestType.INIT
+
+    @property
+    def is_ajax(self):
+        return self._page_request_type == PageRequestType.AJAX
+
+    @property
+    def is_websocket(self):
+        return self._page_request_type == PageRequestType.WEBSOCKET
 
     def on_error(self, error):
         pass
 
-    def on_switch_requested(self, new_page_id):
+    @staticmethod
+    def on_switch_requested(index, new_page_id):
         return True
 
     def on_data_received(self, data):
@@ -156,12 +169,8 @@ class Page(metaclass=PageMeta):
 
     @classmethod
     def send(cls, index):
-        try:
-            motdplayer = motdplayer_dictionary[index]
-        except (ValueError, OverflowError):
-            cls(index).on_error(SessionError.UNKNOWN_PLAYER)
-        else:
-            motdplayer.send_page(cls)
+        motdplayer = motdplayer_dictionary[index]
+        motdplayer.send_page(cls)
 
 
 class MOTDSession:
@@ -170,7 +179,6 @@ class MOTDSession:
         self._motdplayer = motdplayer
         self._page_class = page_class
         self.id = id_
-        self.page = None
         self.page_ws = None
         self.ws_allowed = False
         self._answer = None
@@ -179,24 +187,19 @@ class MOTDSession:
         self.init_page(page_class)
 
     def init_page(self, page_class):
-        self.ws_allowed = False
         self._page_class = page_class
+        self.ws_allowed = page_class.ws_support
 
-        self.page = page_class(self._motdplayer.index, ws_instance=False)
-
-        old_page_ws = self.page_ws
-        self.page_ws = None
-
-        if page_class.ws_support:
-            self.ws_allowed = True
-
-        if old_page_ws is not None:
-            self._ws_stop_transmission("ERROR_WS_SWITCHED_FROM")
-            old_page_ws.on_error(SessionError.WS_SWITCHED_FROM)
+        try:
+            if self.page_ws is not None:
+                self._ws_stop_transmission("ERROR_WS_SWITCHED_FROM")
+                self.page_ws.on_error(SessionError.WS_SWITCHED_FROM)
+        finally:
+            self.page_ws = None
 
     def set_ws_callbacks(self, send_data, stop_transmission):
         self.page_ws = self._page_class(
-            self._motdplayer.index, ws_instance=True)
+            self._motdplayer.index, PageRequestType.WEBSOCKET)
 
         self.page_ws.send_data = send_data
 
@@ -206,34 +209,30 @@ class MOTDSession:
         self.page_ws.stop_ws_transmission = plugin_stop_ws_transmission
         self._ws_stop_transmission = stop_transmission
 
-    def error(self, error, ws_only=False):
+    def error(self, error):
         if self._closed:
             raise SessionClosedException("Please stop data transmission")
 
-        if self.page_ws is not None and error in (
-                SessionError.TAKEN_OVER,
-                SessionError.PLAYER_DROP):
+        if self.page_ws is None:
+            return
 
+        if error in (SessionError.TAKEN_OVER, SessionError.PLAYER_DROP):
             self._ws_stop_transmission("ERROR_SESSION_{}".format(error.name))
 
-        if ws_only:
-            self.page_ws.on_error(error)
-        else:
-            self.page.on_error(error)
-            if self.page_ws is not None:
-                self.page_ws.on_error(error)
-
+        self.page_ws.on_error(error)
         self.page_ws = None
 
-    def receive(self, data):
+    def receive(self, data, page_request_type):
         if self._closed:
             raise SessionClosedException("Please stop data transmission")
+
+        page = self._page_class(self._motdplayer.index, page_request_type)
 
         # Reset self._answer
         self._answer = None
 
         # Save send_data callback that generally raises RuntimeError
-        old_send_data = self.page.send_data
+        old_send_data = page.send_data
 
         # Define our own callback that puts the data into self._answer
         def send_data(answer):
@@ -243,18 +242,18 @@ class MOTDSession:
                     "Only Page instances that are initialized from a "
                     "WebSocket call can send data independently to "
                     "on_data_received callback.".format(
-                        self.page.page_id, self.page.plugin_id))
+                        page.page_id, page.plugin_id))
 
             self._answer = answer
 
-        self.page.send_data = send_data
+        page.send_data = send_data
 
         # Call page's on_data_received callback. The page may call its own
         # send_data method, which in turn will put the data in self._answer.
-        self.page.on_data_received(data)
+        page.on_data_received(data)
 
         # Restore original send_data callback
-        self.page.send_data = old_send_data
+        page.send_data = old_send_data
 
         # Return the answer, no matter if send_data was called or not
         return self._answer
@@ -269,7 +268,8 @@ class MOTDSession:
         if self._closed:
             raise SessionClosedException("Please stop data transmission")
 
-        return self.page.on_switch_requested(new_page_id)
+        return self._page_class.on_switch_requested(
+            self._motdplayer.index, new_page_id)
 
     def close(self):
         self._closed = True
@@ -425,9 +425,6 @@ class MOTDPlayer:
 
 
 class MOTDPlayerDictionary(PlayerDictionary):
-    def __init__(self, factory=MOTDPlayer, *args, **kwargs):
-        super().__init__(factory, *args, **kwargs)
-
     def on_automatically_removed(self, index):
         motdplayer = self[index]
         motdplayer.close_all_sessions(SessionError.PLAYER_DROP)
@@ -441,7 +438,7 @@ class MOTDPlayerDictionary(PlayerDictionary):
         raise ValueError(
             "Cannot find a player with SteamID64 = {}".format(steamid64))
 
-motdplayer_dictionary = MOTDPlayerDictionary()
+motdplayer_dictionary = MOTDPlayerDictionary(factory=MOTDPlayer)
 
 
 class MOTDPlayerRawReceiver(RawReceiver):
@@ -452,7 +449,7 @@ class MOTDPlayerRawReceiver(RawReceiver):
 
         self.motdplayer = None
         self.session = None
-        self.ws_support = False
+        self.page_request_type = None
 
     def send_message(self, **kwargs):
         self.send_data(json.dumps(kwargs).encode('utf-8'))
@@ -475,7 +472,7 @@ class MOTDPlayerRawReceiver(RawReceiver):
                 steamid = message['steamid']
                 session_id = message['session_id']
                 new_salt = message['new_salt']
-                ws_support = message['ws']
+                request_type = message['request_type']
             except KeyError:
                 self.stop()
                 return
@@ -501,13 +498,17 @@ class MOTDPlayerRawReceiver(RawReceiver):
 
             self.session = session
 
-            if ws_support:
+            self.page_request_type = {
+                'INIT': PageRequestType.INIT,
+                'AJAX': PageRequestType.AJAX,
+                'WEBSOCKET': PageRequestType.WEBSOCKET,
+            }[request_type]
+
+            if self.page_request_type == PageRequestType.WEBSOCKET:
                 if not self.session.ws_allowed:
                     self.send_message(status="ERROR_NO_WS_SUPPORT")
                     self.stop()
                     return
-
-                self.ws_support = True
 
                 def send_ws_data(data):
                     try:
@@ -594,7 +595,7 @@ class MOTDPlayerRawReceiver(RawReceiver):
                 self.stop()
                 return
 
-            if self.ws_support:
+            if self.page_request_type == PageRequestType.WEBSOCKET:
                 try:
                     self.session.receive_ws(custom_data)
 
@@ -611,7 +612,8 @@ class MOTDPlayerRawReceiver(RawReceiver):
 
             else:
                 try:
-                    answer = self.session.receive(custom_data)
+                    answer = self.session.receive(
+                        custom_data, self.page_request_type)
 
                 except SessionClosedException:
                     self.send_message(status="ERROR_SESSION_CLOSED_3")
@@ -644,7 +646,7 @@ class MOTDPlayerRawReceiver(RawReceiver):
                 self.send_data(answer_encoded)
 
     def on_connection_abort(self):
-        if self.ws_support:
+        if self.page_request_type == PageRequestType.WEBSOCKET:
             self.session.error(SessionError.WS_TRANSMISSION_END, ws_only=True)
 
 

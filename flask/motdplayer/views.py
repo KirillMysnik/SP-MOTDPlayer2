@@ -29,14 +29,14 @@ def print_exc():
     print(format_exc(), file=sys.stderr)
 
 
-def build_error(error_id, ws):
-    if ws:
+def build_error(error_id, request_type):
+    if request_type == "WEBSOCKET":
         return {
             'status': "ERROR_VIEW",
             'error_id': error_id,
         }
 
-    if request.is_json:
+    if request_type == "AJAX":
         return jsonify({
             'status': "ERROR_VIEW",
             'error_id': error_id,
@@ -46,7 +46,7 @@ def build_error(error_id, ws):
 
 
 def create_client(client_class, db, server_id, plugin_id, page_id, steamid,
-                  auth_method, auth_token, session_id, ws):
+                  auth_method, auth_token, session_id, request_type):
     """
     :return: server, wrp, user, client, error
     """
@@ -54,17 +54,20 @@ def create_client(client_class, db, server_id, plugin_id, page_id, steamid,
     try:
         server = servers[server_id]
     except KeyError:
-        return None, None, None, None, build_error("Unknown Server.", ws)
+        return None, None, None, None, build_error(
+            "Unknown Server.", request_type)
 
     try:
         plugin_wrps = wrps[plugin_id]
     except KeyError:
-        return server, None, None, None, build_error("Unknown Plugin.", ws)
+        return server, None, None, None, build_error(
+            "Unknown Plugin.", request_type)
 
     try:
         wrp = plugin_wrps[page_id]
     except KeyError:
-        return server, None, None, None, build_error("Unknown Page.", ws)
+        return server, None, None, None, build_error(
+            "Unknown Page.", request_type)
 
     # Auth
     steamid = str(steamid)
@@ -79,7 +82,8 @@ def create_client(client_class, db, server_id, plugin_id, page_id, steamid,
             auth_method, plugin_id, page_id, auth_token, session_id):
 
         db.session.rollback()
-        return server, wrp, None, None, build_error("Invalid Auth.", ws)
+        return server, wrp, None, None, build_error(
+            "Invalid Auth.", request_type)
 
     # Connection to SRCDS
     try:
@@ -87,23 +91,25 @@ def create_client(client_class, db, server_id, plugin_id, page_id, steamid,
     except ConnectionAbort:
         
         # May happen if our IP address is not in receiver's CCP whitelist
-        return server, wrp, user, None, build_error("IP Not Whitelisted.", ws)
+        return server, wrp, user, None, build_error(
+            "IP Not Whitelisted.", request_type)
 
     if auth_method == AuthMethod.SRCDS:
         new_salt = user.get_new_salt()
 
-        error = client.set_identity(steamid, new_salt, session_id, ws)
+        error = client.set_identity(
+            steamid, new_salt, session_id, request_type)
         if error is not None:
             return (server, wrp, user, client, build_error(
-                        "Identity Rejected ({}).".format(error), ws))
+                        "Identity Rejected ({}).".format(error), request_type))
 
         user.salt = new_salt
 
     elif auth_method == AuthMethod.WEB:
-        error = client.set_identity(steamid, None, session_id, ws)
+        error = client.set_identity(steamid, None, session_id, request_type)
         if error is not None:
             return (server, wrp, user, client, build_error(
-                        "Identity Rejected ({}).".format(error), ws))
+                        "Identity Rejected ({}).".format(error), request_type))
 
         web_salt = user.get_new_salt()
         user.web_salt = web_salt
@@ -111,7 +117,7 @@ def create_client(client_class, db, server_id, plugin_id, page_id, steamid,
     else:
         client.stop()
         return server, wrp, user, client, build_error(
-            "Unknown Auth Method.", ws)
+            "Unknown Auth Method.", request_type)
 
     db.session.commit()
 
@@ -140,20 +146,22 @@ def init(app, db):
     def route_ajax_switch(server_id, plugin_id, new_page_id, page_id, steamid,
                           auth_method, auth_token, session_id):
 
+        request_type = "AJAX"
+
         # Action check
         if request.json['action'] != "switch":
-            return build_error("Bad Request.", ws=False)
+            return build_error("Bad Request.", request_type)
 
         server, wrp, user, client, error = create_client(
             MOTDClient, db, server_id, plugin_id, page_id, steamid,
-            auth_method, auth_token, session_id, ws=False)
+            auth_method, auth_token, session_id, request_type)
 
         if error is not None:
             return error
 
         # Switch
         if not client.request_switch(new_page_id):
-            return build_error("Switch Rejected.", ws=False)
+            return build_error("Switch Rejected.", request_type)
 
         return jsonify({
             'status': "OK",
@@ -166,9 +174,11 @@ def init(app, db):
     def route_base_route(server_id, plugin_id, page_id, steamid, auth_method,
                          auth_token, session_id):
 
+        request_type = "AJAX" if request.is_json else "INIT"
+
         server, wrp, user, client, error = create_client(
             MOTDClient, db, server_id, plugin_id, page_id, steamid,
-            auth_method, auth_token, session_id, ws=False)
+            auth_method, auth_token, session_id, request_type)
 
         if error is not None:
             return error
@@ -180,16 +190,16 @@ def init(app, db):
                 action = request.json['action']
                 data = request.json['custom_data']
             except KeyError:
-                return build_error("Bad Request.", ws=False)
+                return build_error("Bad Request.", request_type)
 
             if action != "custom-data":
-                return build_error("Invalid Action.", ws=False)
+                return build_error("Invalid Action.", request_type)
 
             try:
                 data = wrp.ajax_callback(ex_data_func, data)
             except Exception:
                 print_exc()
-                return build_error("WRP AJAX Callback Raised.", ws=False)
+                return build_error("WRP AJAX Callback Raised.", request_type)
             finally:
                 client.stop()
 
@@ -208,7 +218,7 @@ def init(app, db):
 
             except Exception:
                 print_exc()
-                return build_error("WRP Callback Raised.", ws=False)
+                return build_error("WRP Callback Raised.", request_type)
             finally:
                 client.stop()
 
@@ -250,19 +260,21 @@ def init(app, db):
         def route_base_route_ws(server_id, plugin_id, page_id, steamid,
                                 auth_method, auth_token, session_id):
 
-            return build_error("WebSocket Not Supported", ws=False)
+            return build_error("WebSocket Not Supported", "INIT")
 
     else:
         @sockets.route(config.get('application', 'base_route_ws'))
         def route_base_route_ws(server_id, plugin_id, page_id, steamid,
                                 auth_method, auth_token, session_id):
 
+            request_type = "WEBSOCKET"
+
             def ws_send(**kwargs):
                 uwsgi.websocket_send(json.dumps(kwargs).encode('utf-8'))
 
             server, wrp, user, client, error = create_client(
                 MOTDClient, db, server_id, plugin_id, page_id, steamid,
-                auth_method, auth_token, session_id, ws=True)
+                auth_method, auth_token, session_id, request_type)
 
             if error is not None:
                 ws_send(**error)
@@ -309,13 +321,13 @@ def init(app, db):
                     print_exc()
                     client.stop()
                     ws_send(**build_error(
-                        "WRP WS Callback Raised.", ws=True))
+                        "WRP WS Callback Raised.", request_type))
                     return
 
                 if filtered_data is None:
                     client.stop()
                     ws_send(**build_error(
-                        "WRP WS Callback Refused Data.", ws=True))
+                        "WRP WS Callback Refused Data.", request_type))
                     return
 
                 try:
@@ -327,7 +339,7 @@ def init(app, db):
                     print_exc()
                     client.stop()
                     ws_send(**build_error(
-                        "WRP WS Callback Invalid Answer.", ws=True))
+                        "WRP WS Callback Invalid Answer.", request_type))
                     return
 
                 client.send_data(data_encoded)
@@ -356,7 +368,7 @@ def init(app, db):
                             print_exc()
                             # TODO: client.stop?
                             ws_send(**build_error(
-                                "SRCDS Sends Invalid Data", ws=True))
+                                "SRCDS Sends Invalid Data", request_type))
 
                             return
 
