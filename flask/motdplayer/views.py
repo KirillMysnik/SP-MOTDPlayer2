@@ -195,6 +195,9 @@ def init(app, db):
             if action != "custom-data":
                 return build_error("Invalid Action.", request_type)
 
+            if wrp.ajax_callback is None:
+                return build_error("WRP No AJAX Callback.", request_type)
+
             try:
                 data = wrp.ajax_callback(ex_data_func, data)
             except Exception:
@@ -213,6 +216,9 @@ def init(app, db):
             })
 
         else:
+            if wrp.regular_callback is None:
+                return build_error("WRP No Regular Callback.", request_type)
+
             try:
                 template_name, context = wrp.regular_callback(ex_data_func)
 
@@ -315,6 +321,12 @@ def init(app, db):
                     return
 
                 # WebSocket -> SRCDS: data goes through wrp callback
+                if wrp.ws_callback is None:
+                    client.stop()
+                    ws_send(**build_error(
+                        "WRP No WS Callback.", request_type))
+                    return
+
                 try:
                     filtered_data = wrp.ws_callback(custom_data)
                 except Exception:
